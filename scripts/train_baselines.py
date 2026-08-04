@@ -18,6 +18,7 @@ from subsurface_ml.evaluation import (
 )
 from subsurface_ml.modeling import (
     build_dummy_classifier,
+    build_logistic_regression_pipeline,
     build_random_forest_pipeline,
     extract_feature_importances,
     fit_classifier,
@@ -213,6 +214,57 @@ def main() -> None:
         dummy_metrics,
     )
 
+    print("\nTraining logistic regression baseline...")
+
+    logistic_model = build_logistic_regression_pipeline(
+        max_iter=2000,
+        random_state=42,
+    )
+
+    start_time = perf_counter()
+
+    fit_classifier(
+        logistic_model,
+        X_train,
+        y_train,
+    )
+
+    logistic_training_seconds = (
+        perf_counter() - start_time
+    )
+
+    logistic_predictions = predict_classes(
+        logistic_model,
+        X_validation,
+    )
+
+    logistic_metrics = evaluate_and_save(
+        "logistic_regression",
+        y_validation,
+        logistic_predictions,
+    )
+
+    logistic_metrics["training_seconds"] = (
+        logistic_training_seconds
+    )
+
+    save_metrics_json(
+        logistic_metrics,
+        MODEL_REPORT_DIR
+        / "logistic_regression_validation_metrics.json",
+    )
+
+    save_model(
+        logistic_model,
+        MODEL_DIR
+        / "logistic_regression.joblib",
+    )
+
+    print_metrics(
+        "Logistic Regression",
+        logistic_metrics,
+    )
+
     # ---------------------------------------------------------
     # Random forest
     # ---------------------------------------------------------
@@ -307,6 +359,10 @@ def main() -> None:
                 **dummy_metrics,
             },
             {
+                "model": "logistic_regression",
+                **logistic_metrics,
+            },
+            {
                 "model": "random_forest",
                 **random_forest_metrics,
             },
@@ -331,9 +387,12 @@ def main() -> None:
 
     generated_paths = [
         MODEL_DIR / "dummy_classifier.joblib",
+        MODEL_DIR / "logistic_regression_joblib",
         MODEL_DIR / "random_forest_baseline.joblib",
         MODEL_REPORT_DIR
         / "baseline_model_comparison.csv",
+        MODEL_REPORT_DIR
+        / "logistic_regression_validation_metrics.json",
         MODEL_REPORT_DIR
         / "random_forest_feature_importances.csv",
         MODEL_FIGURE_DIR
@@ -350,7 +409,6 @@ def main() -> None:
         print(
             f"- {path.relative_to(project_root)}"
         )
-
 
 if __name__ == "__main__":
     main()

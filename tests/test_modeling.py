@@ -1,11 +1,13 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
 
 from subsurface_ml.modeling import (
     build_dummy_classifier,
+    build_logistic_regression_pipeline,
     build_random_forest_pipeline,
     extract_feature_importances,
     fit_classifier,
@@ -83,6 +85,41 @@ def test_build_dummy_classifier() -> None:
 
     assert model.strategy == "most_frequent"
 
+def test_build_logistic_regression_pipeline() -> None:
+    model = build_logistic_regression_pipeline()
+
+    assert isinstance(model, Pipeline)
+    assert "imputer" in model.named_steps
+    assert "scaler" in model.named_steps
+    assert "classifier" in model.named_steps
+
+
+def test_logistic_regression_pipeline_handles_missing_values() -> None:
+    features = pd.DataFrame(
+        {
+            "GR": [10.0, 20.0, np.nan, 40.0, 50.0, 60.0],
+            "RHOB": [2.1, np.nan, 2.3, 2.4, 2.5, 2.6],
+        }
+    )
+    target = pd.Series([0, 0, 0, 1, 1, 1])
+
+    model = build_logistic_regression_pipeline(
+        max_iter=500,
+    )
+
+    fit_classifier(
+        model,
+        features,
+        target,
+    )
+
+    predictions = predict_classes(
+        model,
+        features,
+    )
+
+    assert len(predictions) == len(target)
+    assert set(predictions).issubset({0, 1}) 
 
 def test_build_random_forest_pipeline() -> None:
     model = build_random_forest_pipeline(
