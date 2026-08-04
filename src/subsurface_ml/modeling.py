@@ -10,6 +10,8 @@ from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import RandomForestClassifier 
 from sklearn.impute import SimpleImputer 
 from sklearn.pipeline import Pipeline
+from sklearn.linear_model import LogisticRegression
+from sklearn.preprocessing import StandardScaler
 
 
 RANDOM_STATE = 42
@@ -25,6 +27,34 @@ def build_dummy_classifier(
         random_state=random_state,
     )
 
+def build_logistic_regression_pipeline(
+        *,
+        max_iter: int = 2000,
+        random_state: int = RANDOM_STATE,
+):
+    """
+    BUild an imputation, scaling, and logistic Regression pipeline.
+    """
+
+    return Pipeline(
+        steps=[
+            (
+                "imputer",
+                SimpleImputer(strategy="median"),
+            ),
+            (
+                "scaler",
+                StandardScaler(),
+            ),
+            (
+                "classifier",
+                LogisticRegression(
+                    max_iter=max_iter,
+                    random_state=random_state,
+                ),
+            ),
+        ]
+    )
 
 def build_random_forest_pipeline(
     n_estimators: int = 100,
