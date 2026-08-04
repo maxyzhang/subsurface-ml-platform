@@ -1,0 +1,8 @@
+{
+  "selection_metric": "balanced_accuracy",
+  "best_model": "random_forest",
+  "best_balanced_accuracy": 0.3314212748520262,
+  "best_accuracy": 0.7159139642328183,
+  "best_macro_f1": 0.3164107023178451,
+  "best_weighted_f1": 0.7072400104519566
+}
