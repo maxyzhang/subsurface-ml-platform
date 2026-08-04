@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from sklearn.pipeline import Pipeline
+from subsurface_ml.modeling import tune_random_forest
 
 from subsurface_ml.modeling import (
     build_dummy_classifier,
@@ -93,6 +94,28 @@ def test_build_logistic_regression_pipeline() -> None:
     assert "scaler" in model.named_steps
     assert "classifier" in model.named_steps
 
+def test_tune_random_forest_returns_fitted_search() -> None:
+    features = pd.DataFrame(
+        {
+            "GR": [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0],
+            "RHOB": [2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8],
+        }
+    )
+    target = pd.Series([0, 0, 0, 0, 1, 1, 1, 1])
+
+    search = tune_random_forest(
+        features,
+        target,
+        n_iter=1,
+        cv=2,
+        random_state=42,
+        n_jobs=1,
+    )
+
+    assert hasattr(search, "best_estimator_")
+    assert hasattr(search, "best_params_")
+    assert hasattr(search, "best_score_")
+    assert search.best_estimator_ is not None 
 
 def test_logistic_regression_pipeline_handles_missing_values() -> None:
     features = pd.DataFrame(
