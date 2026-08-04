@@ -12,6 +12,8 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import RandomizedSearchCV
 
 
 RANDOM_STATE = 42
@@ -50,6 +52,7 @@ def build_logistic_regression_pipeline(
                 "classifier",
                 LogisticRegression(
                     max_iter=max_iter,
+                    class_weight="balanced",
                     random_state=random_state,
                 ),
             ),
@@ -288,3 +291,43 @@ def load_model(
         )
 
     return joblib.load(model_path)
+
+def tune_random_forest(
+    features: pd.DataFrame,
+    target: pd.Series,
+    *,
+    n_iter: int = 10,
+    cv: int = 3,
+    random_state: int = RANDOM_STATE,
+    n_jobs: int = -1,       
+) -> RandomizedSearchCV:
+    """Tune a Random Forest pipeline using randomized cross-validation."""
+
+    pipeline = build_random_forest_pipeline(
+        random_state=random_state,
+        n_jobs=n_jobs,
+    )
+
+    parameter_distributions = {
+        "classifier__n_estimators": [50, 100, 150],
+        "classifier__max_depth": [10,20,30,None],
+        "classifier__min_samples_split": [2,5,10],
+        "classifier__min_samples_leaf": [1,3,5],
+        "classifier__max_features": ["sqrt", "log2", None],
+    }
+
+    search = RandomizedSearchCV(
+        estimator=pipeline,
+        param_distributions=parameter_distributions,
+        n_iter=n_iter,
+        scoring="balanced_accuracy",
+        cv=cv,
+        random_state=random_state,
+        n_jobs=n_jobs,
+        verbose=2,
+        refit=True,
+    )
+
+    search.fit(features, target)
+
+    return search
