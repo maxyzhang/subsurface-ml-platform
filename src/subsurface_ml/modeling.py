@@ -62,6 +62,7 @@ def build_logistic_regression_pipeline(
 def build_random_forest_pipeline(
     n_estimators: int = 100,
     max_depth: int | None = 20,
+    min_samples_split: int = 2,
     min_samples_leaf: int = 5,
     max_features: str | float | int | None = "sqrt",
     class_weight: str | dict[int, float] | None = "balanced_subsample",
@@ -91,6 +92,7 @@ def build_random_forest_pipeline(
     classifier = RandomForestClassifier(
         n_estimators=n_estimators,
         max_depth=max_depth,
+        min_samples_split=min_samples_split,
         min_samples_leaf=min_samples_leaf,
         max_features=max_features,
         class_weight=class_weight,
@@ -298,8 +300,10 @@ def tune_random_forest(
     *,
     n_iter: int = 10,
     cv: int = 3,
+    scoring: str = "balanced_accuracy",
     random_state: int = RANDOM_STATE,
-    n_jobs: int = -1,       
+    n_jobs: int = -1,  
+    parameter_distributions: dict[str, list] | None = None,     
 ) -> RandomizedSearchCV:
     """Tune a Random Forest pipeline using randomized cross-validation."""
 
@@ -308,19 +312,20 @@ def tune_random_forest(
         n_jobs=n_jobs,
     )
 
-    parameter_distributions = {
-        "classifier__n_estimators": [50, 100, 150],
-        "classifier__max_depth": [10,20,30,None],
-        "classifier__min_samples_split": [2,5,10],
-        "classifier__min_samples_leaf": [1,3,5],
-        "classifier__max_features": ["sqrt", "log2", None],
-    }
+    if parameter_distributions is None:
+        parameter_distributions = {
+            "classifier__n_estimators": [50, 100, 150],
+            "classifier__max_depth": [10,20,30,None],
+            "classifier__min_samples_split": [2,5,10],
+            "classifier__min_samples_leaf": [1,3,5],
+            "classifier__max_features": ["sqrt", "log2", None],
+        }
 
     search = RandomizedSearchCV(
         estimator=pipeline,
         param_distributions=parameter_distributions,
         n_iter=n_iter,
-        scoring="balanced_accuracy",
+        scoring=scoring,
         cv=cv,
         random_state=random_state,
         n_jobs=n_jobs,
