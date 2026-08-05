@@ -16,6 +16,12 @@ from subsurface_ml.evaluation import (
     save_feature_importance_plot,
     save_metrics_json,
 )
+
+from subsurface_ml.experiments import(
+    build_experiment_record,
+    append_experiment,
+)
+
 from subsurface_ml.modeling import (
     build_dummy_classifier,
     build_logistic_regression_pipeline,
@@ -218,8 +224,17 @@ def main() -> None:
     )
 
     dummy_metrics["training_seconds"] = (
-        dummy_training_seconds
+            dummy_training_seconds
     )
+
+    dummy_record = build_experiment_record(
+        run_type="baseline",
+        model="dummy",
+        metrics=dummy_metrics,
+        training_seconds=dummy_metrics["training_seconds"],
+    )
+
+    append_experiment(dummy_record)
 
     save_metrics_json(
         dummy_metrics,
@@ -268,8 +283,21 @@ def main() -> None:
     )
 
     logistic_metrics["training_seconds"] = (
-        logistic_training_seconds
+            logistic_training_seconds
     )
+
+    logistic_record = build_experiment_record(
+        run_type="baseline",
+        model="logistic_regression",
+        metrics=logistic_metrics,
+        training_seconds=logistic_metrics["training_seconds"],
+        parameters={
+            **logistic_config,
+            "random_state": random_state,
+        }
+    )
+
+    append_experiment(logistic_record)
 
     save_metrics_json(
         logistic_metrics,
@@ -331,6 +359,19 @@ def main() -> None:
         random_forest_training_seconds
     )
 
+    random_forest_record = build_experiment_record(
+        run_type="baseline",
+        model="random_forest",
+        metrics=random_forest_metrics,
+        training_seconds=random_forest_training_seconds,
+        parameters={
+            **random_forest_config,
+            "random_state":random_state,
+        },
+    )
+
+    append_experiment(random_forest_record)
+    
     save_metrics_json(
         random_forest_metrics,
         MODEL_REPORT_DIR

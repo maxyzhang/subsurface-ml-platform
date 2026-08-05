@@ -1,0 +1,4 @@
+timestamp_utc,run_type,model,accuracy,balanced_accuracy,macro_f1,weighted_f1,training_seconds,best_cv_score,parameters
+2026-08-05T16:19:19.938249+00:00,baseline,dummy,0.609792868669452,0.0909090909090909,0.0688731033818109,0.4619816001389842,0.0665861000306904,,{}
+2026-08-05T16:20:55.093654+00:00,baseline,logistic_regression,0.4636028030152309,0.3605435886206823,0.1922478048781252,0.556451158710524,94.3205292999046,,"{""max_iter"": 1000, ""random_state"": 42}"
+2026-08-05T16:22:16.119814+00:00,baseline,random_forest,0.7159139642328183,0.3314212748520262,0.3164107023178451,0.7072400104519566,79.40494829998352,,"{""class_weight"": ""balanced_subsample"", ""max_depth"": 20, ""max_features"": ""sqrt"", ""min_samples_leaf"": 5, ""min_samples_split"": 2, ""n_estimators"": 100, ""n_jobs"": -1, ""random_state"": 42}"
