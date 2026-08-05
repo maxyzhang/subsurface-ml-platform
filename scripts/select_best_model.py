@@ -39,6 +39,7 @@ MODEL_CONFIGS = {
     },
 }
 
+EXPERIMENT_PATH = REPORT_DIR / "experiments.csv"
 
 def load_metrics(
     metrics_path: Path,
@@ -58,6 +59,107 @@ def load_metrics(
 
     return metrics
 
+def load_experiment_leaderboard(
+    experiment_path: Path = EXPERIMENT_PATH,
+) -> pd.DataFrame:
+    """Build a model leaderboard from experiment history."""
+
+    if not experiment_path.exists():
+        raise FileNotFoundError(
+            f"Experiment file not found: {experiment_path}"
+        )
+
+    experiments = pd.read_csv(experiment_path)
+
+    required_columns = {
+        "timestamp_utc",
+        "model",
+        "accuracy",
+        "balanced_accuracy",
+        "macro_f1",
+        "weighted_f1",
+        "training_seconds",
+    }
+
+    missing_columns = required_columns.difference(
+        experiments.columns
+    )
+
+    if missing_columns:
+        missing_text = ", ".join(
+            sorted(missing_columns)
+        )
+        raise ValueError(
+            "Experiment file is missing required columns: "
+            f"{missing_text}"
+        )
+
+    if experiments.empty:
+        raise ValueError(
+            "Experiment history is empty."
+        )
+
+    experiments = experiments.copy()
+
+    experiments["timestamp_utc"] = pd.to_datetime(
+        experiments["timestamp_utc"],
+        utc=True,
+        errors="coerce",
+    )
+
+    experiments["balanced_accuracy"] = pd.to_numeric(
+        experiments["balanced_accuracy"],
+        errors="coerce",
+    )
+
+    valid_experiments = experiments.dropna(
+        subset=[
+            "timestamp_utc",
+            "model",
+            "balanced_accuracy",
+        ]
+    )
+
+    if valid_experiments.empty:
+        raise ValueError(
+            "No valid experiments contain balanced_accuracy."
+        )
+
+    latest_experiments = (
+        valid_experiments
+        .sort_values("timestamp_utc")
+        .drop_duplicates(
+            subset="model",
+            keep="last",
+        )
+    )
+
+    leaderboard = (
+        latest_experiments[
+            [
+                "model",
+                "accuracy",
+                "balanced_accuracy",
+                "macro_f1",
+                "weighted_f1",
+                "training_seconds",
+                "timestamp_utc",
+            ]
+        ]
+        .sort_values(
+            by="balanced_accuracy",
+            ascending=False,
+        )
+        .reset_index(drop=True)
+    )
+
+    leaderboard.insert(
+        0,
+        "rank",
+        range(1, len(leaderboard) + 1),
+    )
+
+    return leaderboard
 
 def build_model_leaderboard() -> pd.DataFrame:
     """Build a leaderboard from all available model metrics."""
@@ -202,7 +304,7 @@ def main() -> None:
         exist_ok=True,
     )
 
-    leaderboard = build_model_leaderboard()
+    leaderboard = load_experiment_leaderboard()
 
     best_model_name = select_best_model(
         leaderboard
