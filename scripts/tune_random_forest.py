@@ -24,7 +24,10 @@ from subsurface_ml.settings import (
     load_yaml_config,
 )
 
-
+from subsurface_ml.experiments import (
+    append_experiment,
+    build_experiment_record,
+)
 MODEL_REPORT_DIR = REPORT_DIR / "models"
 
 
@@ -191,6 +194,17 @@ def main() -> None:
         tuning_seconds
     )
 
+    tuned_record = build_experiment_record(
+        run_type="tuning",
+        model="random_forest_tuned",
+        metrics=validation_metrics,
+        training_seconds=float(tuning_seconds),
+        best_cv_score=float(search.best_score_),
+        parameters=search.best_params_,
+    )
+
+    append_experiment(tuned_record)
+    
     print("\nTuned Random Forest validation metrics:")
 
     for metric_name, value in (
