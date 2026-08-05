@@ -2,6 +2,6 @@
   "accuracy": 0.4636028030152309,
   "balanced_accuracy": 0.3605435886206823,
   "macro_f1": 0.19224780487812523,
-  "training_seconds": 88.21866290003527,
+  "training_seconds": 94.32052929990459,
   "weighted_f1": 0.556451158710524
 }
