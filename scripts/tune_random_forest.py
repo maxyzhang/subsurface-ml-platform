@@ -19,6 +19,11 @@ from subsurface_ml.modeling import (
 )
 from subsurface_ml.preprocessing import load_prepared_split
 
+from subsurface_ml.settings import (
+    get_config_value,
+    load_yaml_config,
+)
+
 
 MODEL_REPORT_DIR = REPORT_DIR / "models"
 
@@ -57,6 +62,25 @@ def main() -> None:
         exist_ok=True,
     )
 
+    config = load_yaml_config()
+
+    random_state = get_config_value(
+        config,
+        "project",
+        "random_state",
+    )
+
+    tuning_config = get_config_value(
+        config,
+        "tuning",
+    )
+
+    rf_search_config = get_config_value(
+        config,
+        "tuning",
+        "random_forest",
+    )
+
     print("Loading prepared training data...")
 
     X_train, y_train, metadata_train = (
@@ -85,23 +109,48 @@ def main() -> None:
 
     start_time = perf_counter()
 
-    sampled_features = X_train.sample(
-        n=50_000,
-        random_state=42,
+    sample_size = min(
+        int(tuning_config["sample_size"]),
+        len(X_train),
+
     )
 
-    sampled_targe = y_train.loc[
+    sampled_features = X_train.sample(
+        n=sample_size,
+        random_state=random_state,
+    )
+
+    sampled_target = y_train.loc[
         sampled_features.index
     ]
 
     search = tune_random_forest(
-        X_train,
-        y_train,
-        n_iter=2,
-        cv=2,
-        random_state=42,
-        n_jobs=-1,
-    )
+    features=sampled_features,
+    target=sampled_target,
+    n_iter=int(tuning_config["n_iter"]),
+    cv=int(tuning_config["cv"]),
+    scoring=str(tuning_config["scoring"]),
+    random_state=random_state,
+    n_jobs=int(tuning_config["n_jobs"]),
+    parameter_distributions={
+        "classifier__n_estimators": rf_search_config[
+            "n_estimators"
+        ],
+        "classifier__max_depth": rf_search_config[
+            "max_depth"
+        ],
+        "classifier__min_samples_split": rf_search_config[
+            "min_samples_split"
+        ],
+        "classifier__min_samples_leaf": rf_search_config[
+            "min_samples_leaf"
+        ],
+        "classifier__max_features": rf_search_config[
+            "max_features"
+        ],
+    },
+)
+
 
     tuning_seconds = (
         perf_counter() - start_time

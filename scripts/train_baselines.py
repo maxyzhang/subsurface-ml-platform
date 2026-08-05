@@ -29,6 +29,10 @@ from subsurface_ml.preprocessing import (
     load_prepared_split,
 )
 
+from subsurface_ml.settings import (
+    get_config_value,
+    load_yaml_config,
+)
 
 MODEL_REPORT_DIR = REPORT_DIR / "models"
 MODEL_FIGURE_DIR = FIGURE_DIR / "models"
@@ -129,6 +133,25 @@ def main() -> None:
         exist_ok=True,
     )
 
+    config = load_yaml_config()
+
+    random_state = get_config_value(
+        config,
+        "project",
+        "random_state",
+    )
+
+    logistic_config = get_config_value(
+        config,
+        "training",
+        "logistic_regression",
+    )
+
+    random_forest_config = get_config_value(
+        config,
+        "training",
+        "random_forest",
+    )
     print("Loading prepared train data...")
 
     X_train, y_train, metadata_train = (
@@ -217,8 +240,8 @@ def main() -> None:
     print("\nTraining logistic regression baseline...")
 
     logistic_model = build_logistic_regression_pipeline(
-        max_iter=2000,
-        random_state=42,
+        random_state=random_state,
+        **logistic_config,
     )
 
     start_time = perf_counter()
@@ -276,12 +299,8 @@ def main() -> None:
 
     random_forest_model = (
         build_random_forest_pipeline(
-            n_estimators=100,
-            max_depth=20,
-            min_samples_leaf=5,
-            class_weight="balanced_subsample",
-            random_state=42,
-            n_jobs=-1,
+            random_state=random_state,
+            **random_forest_config,
         )
     )
 
