@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 from typing import Any
+import time
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException 
+from fastapi import FastAPI, HTTPException, Request
+from prometheus_client import Counter, Histogram, make_asgi_app
 from pydantic import BaseModel, ConfigDict, Field
 
 from subsurface_ml.config import DATA_DIR, MODEL_DIR 
@@ -79,6 +81,38 @@ app = FastAPI(
     ),
 )
 
+REQUEST_COUNT = Counter(
+    "api_requests_total",
+    "Total number of API requests",
+    ["method", "endpoint", "status_code"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "api_request_duration_seconds",
+    "API_request latency in seconds",
+    ["method", "endpoint"],
+)
+
+@app.middleware("http")
+async def record_metrics(request: Request, call_next):
+    start_time = time.perf_counter()
+
+    response = await call_next(request)
+
+    elapsed = time.perf_counter() - start_time
+
+    REQUEST_COUNT.labels(
+        method=request.method,
+        endpoint=request.url.path,
+        status_code=str(response.status_code),
+    ).inc()
+
+    REQUEST_LATENCY.labels(
+        method=request.method,
+        endpoint=request.url.path,
+    ).observe(elapsed)
+
+    return response
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -145,3 +179,6 @@ def predict(
         predicted_class=prediction,
         model_path=str(BEST_MODEL_PATH),
     )
+
+metrics_app = make_asgi_app()
+app.mount("/metrics", metrics_app)
