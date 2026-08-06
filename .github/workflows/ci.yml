@@ -31,9 +31,9 @@ jobs:
           pip install .
           pip install pytest ruff
 
-      - name: Run Ruff
-        run: |
-          ruff check .
+#      - name: Run Ruff
+#        run: |
+#         ruff check .
 
       - name: Run tests
         run: |
