@@ -7,18 +7,14 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException 
 from pydantic import BaseModel, ConfigDict, Field
 
-from subsurface_ml.config import MODEL_DIR 
+from subsurface_ml.config import DATA_DIR, MODEL_DIR 
 from subsurface_ml.modeling import load_model
 from pathlib import Path
 
-
 BEST_MODEL_PATH = MODEL_DIR / "best_model.joblib"
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
 TRAIN_FEATURES_PATH = (
-    PROJECT_ROOT
-    / "data"
+    DATA_DIR
     /"processed"
     / "X_train.parquet"
 )
