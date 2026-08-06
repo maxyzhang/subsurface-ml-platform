@@ -1,6 +1,12 @@
+import os
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(
+    os.getenv(
+        "SUBSURFACE_ML_PROJECT_ROOT",
+        Path(__file__).resolve().parents[2],
+    )
+).resolve()
 
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
@@ -9,7 +15,7 @@ PROCESSED_DATA_DIR = DATA_DIR / "processed"
 
 MODEL_DIR = PROJECT_ROOT / "models"
 REPORT_DIR = PROJECT_ROOT / "reports"
-FIGURE_DIR = REPORT_DIR / "figures"
+FIGURE_DIR = REPORT_DIR / "configs"
 
 
 def ensure_project_directories() -> None:
