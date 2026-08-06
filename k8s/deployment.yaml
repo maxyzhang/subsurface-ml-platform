@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: subsurface-ml-api
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: subsurface-ml-api
+
+  template:
+    metadata:
+      labels:
+        app: subsurface-ml-api
+
+    spec:
+      containers:
+      - name: api
+        image: docker.io/library/subsurface-ml-api:latest
+        imagePullPolicy: Never
+
+        ports:
+        - containerPort: 8000
