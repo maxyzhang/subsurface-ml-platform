@@ -37,3 +37,5 @@ reports/figures/*
 .env
 .DS_Store
 Thumbs.db
+
+*.tar
