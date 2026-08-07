@@ -1,0 +1,26 @@
+services:
+  api:
+    build: .
+    container_name: subsurface-ml-api
+    ports:
+      - "8001:8000"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: subsurface-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:11.6.1
+    container_name: subsurface-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
