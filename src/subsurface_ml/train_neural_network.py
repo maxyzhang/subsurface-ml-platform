@@ -47,40 +47,121 @@ def load_training_data():
 
 
 def train_neural_network(
-    epochs: int = 20,
+    epochs: int = 50,
     batch_size: int = 64,
-    learning_rate: float = 0.001,
+    learning_rate: float = 0.0005,
+    patience: int = 5,
 ):
-    X, y, scaler = load_training_data()
+    X_train, y_train, scaler = load_training_data()
 
-    dataset = TensorDataset(X, y)
+    # Load validation data
+    X_val_df = pd.read_parquet(
+        DATA_DIR / "processed" / "X_validation.parquet"
+    )
+    y_val_df = pd.read_parquet(
+        DATA_DIR / "processed" / "y_validation.parquet"
+    )
 
-    loader = DataLoader(
-        dataset,
+    if isinstance(y_val_df, pd.DataFrame):
+        y_val_df = y_val_df.iloc[:, 0]
+
+    X_val_df = X_val_df.replace(
+        [np.inf, -np.inf],
+        np.nan,
+    )
+
+    X_val_df = X_val_df.fillna(
+        X_val_df.median()
+    )
+
+    X_val_scaled = (
+        X_val_df.to_numpy() - scaler.mean_
+    ) / scaler.scale_
+
+    X_val = torch.tensor(
+        X_val_scaled,
+        dtype=torch.float32,
+    )
+
+    y_val = torch.tensor(
+        y_val_df.to_numpy(),
+        dtype=torch.long,
+    )
+
+    train_dataset = TensorDataset(
+        X_train,
+        y_train,
+    )
+
+    train_loader = DataLoader(
+        train_dataset,
         batch_size=batch_size,
         shuffle=True,
     )
 
-    num_classes = int(torch.max(y).item()) + 1
+    num_classes = int(
+        torch.max(y_train).item()
+    ) + 1
 
     model = LithologyNeuralNetwork(
-        input_size=X.shape[1],
+        input_size=X_train.shape[1],
         num_classes=num_classes,
     )
 
-    criterion = nn.CrossEntropyLoss()
+    # -----------------------------------
+    # Class weights
+    # -----------------------------------
+
+    class_counts = torch.bincount(
+        y_train,
+        minlength=num_classes,
+    ).float()
+
+    class_weights = torch.sqrt(
+        len(y_train)
+        / (
+            num_classes
+            * class_counts.clamp(min=1)
+        )
+    )
+    class_weights = class_weights / class_weights.mean()
+
+    criterion = nn.CrossEntropyLoss(
+        weight=class_weights
+    )
 
     optimizer = torch.optim.Adam(
         model.parameters(),
         lr=learning_rate,
     )
 
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=0.5,
+        patience=2,
+    )
+
+    best_val_loss = float("inf")
+    epochs_without_improvement = 0
+
+    MODEL_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
     for epoch in range(epochs):
+
+        # -------------------------------
+        # Training
+        # -------------------------------
+
         model.train()
 
-        total_loss = 0.0
+        total_train_loss = 0.0
 
-        for features, labels in loader:
+        for features, labels in train_loader:
+
             optimizer.zero_grad()
 
             outputs = model(features)
@@ -94,35 +175,107 @@ def train_neural_network(
 
             optimizer.step()
 
-            total_loss += loss.item()
+            total_train_loss += loss.item()
 
-        average_loss = total_loss / len(loader)
+        train_loss = (
+            total_train_loss
+            / len(train_loader)
+        )
+
+        # -------------------------------
+        # Validation
+        # -------------------------------
+
+        model.eval()
+
+        with torch.no_grad():
+
+            val_outputs = model(X_val)
+
+            val_loss = criterion(
+                val_outputs,
+                y_val,
+            ).item()
+
+        scheduler.step(val_loss)
+
+        current_lr = optimizer.param_groups[0]["lr"]
 
         print(
             f"Epoch {epoch + 1:02d}/{epochs} "
-            f"Loss: {average_loss:.4f}"
+            f"Train Loss: {train_loss:.4f} "
+            f"Val Loss: {val_loss:.4f} "
+            f"LR: {current_lr:.6f}"
         )
 
-    MODEL_DIR.mkdir(
-        parents=True,
-        exist_ok=True,
+        # -------------------------------
+        # Best model checkpoint
+        # -------------------------------
+
+        if val_loss < best_val_loss:
+
+            best_val_loss = val_loss
+
+            epochs_without_improvement = 0
+
+            torch.save(
+                {
+                    "model_state_dict":
+                        model.state_dict(),
+
+                    "input_size":
+                        X_train.shape[1],
+
+                    "num_classes":
+                        num_classes,
+
+                    "scaler_mean":
+                        scaler.mean_,
+
+                    "scaler_scale":
+                        scaler.scale_,
+
+                    "best_val_loss":
+                        best_val_loss,
+                },
+                MODEL_PATH,
+            )
+
+            print(
+                "  Best model saved."
+            )
+
+        else:
+
+            epochs_without_improvement += 1
+
+        # -------------------------------
+        # Early stopping
+        # -------------------------------
+
+        if (
+            epochs_without_improvement
+            >= patience
+        ):
+
+            print(
+                f"Early stopping at "
+                f"epoch {epoch + 1}"
+            )
+
+            break
+
+    print(
+        f"Best validation loss: "
+        f"{best_val_loss:.4f}"
     )
 
-    torch.save(
-        {
-            "model_state_dict": model.state_dict(),
-            "input_size": X.shape[1],
-            "num_classes": num_classes,
-            "scaler_mean": scaler.mean_,
-            "scaler_scale": scaler.scale_,
-        },
-        MODEL_PATH,
+    print(
+        f"Model saved to: "
+        f"{MODEL_PATH}"
     )
-
-    print(f"Model saved to: {MODEL_PATH}")
 
     return model
-
 
 if __name__ == "__main__":
     train_neural_network()
